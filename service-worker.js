@@ -1,6 +1,6 @@
 let CACHE_NAME = "testPWA"; // The string used to identify our cache
 
-const FILES_TO_CACHE = ["offline.html", "style.css"];
+const FILES_TO_CACHE = ["offline.html", "style.css", "/"];
 
 self.addEventListener("install", (event) => {
   console.log("Installing...");
