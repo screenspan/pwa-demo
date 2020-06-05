@@ -1,14 +1,13 @@
-let CACHE_NAME = "testPWA"; // The string used to identify our cache
+let STATIC_CACHE_NAME = "testPWA-v1"; // The string used to identify our cache
 
-const FILES_TO_CACHE = ["offline.html", "style.css", "/"];
+const FILES_TO_CACHE = ["offline.html", "style.css", "index.html"];
 
 self.addEventListener("install", (event) => {
   console.log("Installing...");
   event.waitUntil(
     caches
-      .open(CACHE_NAME)
+      .open(STATIC_CACHE_NAME)
       .then((cache) => {
-        console.log(`[ServiceWorker] Pre-caching offline page`);
         return cache.addAll(FILES_TO_CACHE);
       })
       .catch((err) => console.log(err))
@@ -16,34 +15,22 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
-  console.log("Activating...");
+  console.log("Activating new service worker...");
+
+  const cacheWhitelist = [STATIC_CACHE_NAME];
+
   event.waitUntil(
-    caches.keys().then((keyList) => {
+    caches.keys().then((cacheNames) => {
       return Promise.all(
-        keyList.map((key) => {
-          if (key !== CACHE_NAME) {
-            console.log("[ServiceWorker] Removing old cache", key);
-            return caches.delete(key);
+        cacheNames.map((cacheName) => {
+          if (cacheWhitelist.indexOf(cacheName) === -1) {
+            return caches.delete(cacheName);
           }
         })
       );
     })
   );
 });
-
-// self.addEventListener("fetch", (event) => {
-//   if (event.request.mode !== "navigate") {
-//     // Not a page navigation, bail.
-//     return;
-//   }
-//   event.respondWith(
-//     fetch(event.request).catch(() => {
-//       return caches.open(CACHE_NAME).then((cache) => {
-//         return cache.match("offline.html");
-//       });
-//     })
-//   );
-// });
 
 self.addEventListener("fetch", (event) => {
   console.log("Fetch event for ", event.request.url);
@@ -56,15 +43,19 @@ self.addEventListener("fetch", (event) => {
           return response;
         }
         console.log("Network request for ", event.request.url);
-        return fetch(event.request);
-
-        // TODO 4 - Add fetched files to the cache
+        return fetch(event.request).then((response) => {
+          // if (response.status === 404) {
+          //   return caches.match('pages/404.html');
+          // }
+          return caches.open(STATIC_CACHE_NAME).then((cache) => {
+            cache.put(event.request.url, response.clone());
+            return response;
+          });
+        });
       })
       .catch((error) => {
-        // TODO 6 - Respond with custom offline page
-        return caches.open(CACHE_NAME).then((cache) => {
-          return cache.match("offline.html");
-        });
+        console.log("Error, ", error);
+        return caches.match("offline.html");
       })
   );
 });
